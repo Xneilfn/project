@@ -25,19 +25,17 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI killText;
 
     [Header("Level-Up Panel")]
-    public GameObject      levelUpPanel;
-    public Transform       upgradeContainer;
-    public GameObject      upgradeButtonPrefab;
+    public GameObject  levelUpPanel;
+    public Transform   upgradeContainer;   // должен быть HorizontalLayoutGroup внутри Canvas
+    public GameObject  upgradeButtonPrefab;
 
     [Header("Damage Flash")]
     public Image damageFlashImage;
 
-    [Header("Weapon Slots")]
-    public List<Image> weaponSlotIcons;
-
     [Header("Upgrades")]
     public List<UpgradeOption> possibleUpgrades;
 
+    // ─────────────────────────────────────────────────────────────────────────
     PlayerStats _player;
     int   _kills;
     float _timer;
@@ -46,8 +44,8 @@ public class GameHUD : MonoBehaviour
     void Start()
     {
         _player = FindObjectOfType<PlayerStats>();
-        if (levelUpPanel) levelUpPanel.SetActive(false);
-        if (damageFlashImage) damageFlashImage.color = new Color(1, 0, 0, 0);
+        if (levelUpPanel)      levelUpPanel.SetActive(false);
+        if (damageFlashImage)  damageFlashImage.color = new Color(1, 0, 0, 0);
         SetWave(1);
     }
 
@@ -55,22 +53,31 @@ public class GameHUD : MonoBehaviour
     {
         if (_player == null || _paused) return;
 
+        // ── HP ──────────────────────────────────────────────────────────────
         float maxHp = _player.characterData.MaxHealth;
-        float ratio = Mathf.Clamp01(_player.currentHealth / maxHp);
-        if (healthSlider) healthSlider.value = ratio;
-        if (healthFill)   healthFill.color   = healthGradient.Evaluate(ratio);
+        float hpRatio = Mathf.Clamp01(_player.currentHealth / maxHp);
+        if (healthSlider) healthSlider.value = hpRatio;
+        if (healthFill)   healthFill.color   = healthGradient.Evaluate(hpRatio);
         if (healthText)   healthText.text    = $"{Mathf.CeilToInt(_player.currentHealth)}/{Mathf.CeilToInt(maxHp)}";
 
-        float expRatio = _player.experienceCap > 0 ? (float)_player.experience / _player.experienceCap : 0f;
+        // ── EXP ─────────────────────────────────────────────────────────────
+        float expRatio = _player.experienceCap > 0
+            ? (float)_player.experience / _player.experienceCap : 0f;
         if (expSlider) expSlider.value = expRatio;
         if (levelText) levelText.text  = $"Lv {_player.level}";
         if (expText)   expText.text    = $"{_player.experience}/{_player.experienceCap}";
 
+        // ── Timer ────────────────────────────────────────────────────────────
         _timer += Time.deltaTime;
-        int m = Mathf.FloorToInt(_timer / 60f);
-        int s = Mathf.FloorToInt(_timer % 60f);
-        if (timerText) timerText.text = $"{m:00}:{s:00}";
+        if (timerText)
+        {
+            int m = Mathf.FloorToInt(_timer / 60f);
+            int s = Mathf.FloorToInt(_timer % 60f);
+            timerText.text = $"{m:00}:{s:00}";
+        }
     }
+
+    // ── Public API ────────────────────────────────────────────────────────────
 
     public void SetWave(int wave)
     {
@@ -85,18 +92,20 @@ public class GameHUD : MonoBehaviour
 
     public void TriggerLevelUp()
     {
-        // Если нет апгрейдов или prefab — просто не останавливаем игру
-        if (possibleUpgrades == null || possibleUpgrades.Count == 0)
+        // Если апгрейды не настроены — не останавливаем игру
+        if (possibleUpgrades == null || possibleUpgrades.Count == 0) return;
+        if (upgradeButtonPrefab == null)
         {
-            Debug.Log("[GameHUD] Level up! No upgrades configured — continuing.");
+            Debug.LogWarning("[GameHUD] upgradeButtonPrefab не назначен!");
             return;
         }
-        if (upgradeButtonPrefab == null || upgradeContainer == null)
+        if (upgradeContainer == null)
         {
-            Debug.LogWarning("[GameHUD] Level up! upgradeButtonPrefab or upgradeContainer not assigned — continuing.");
+            Debug.LogWarning("[GameHUD] upgradeContainer не назначен!");
             return;
         }
 
+        // Выбираем 3 случайных уникальных апгрейда
         List<UpgradeOption> pool = new List<UpgradeOption>(possibleUpgrades);
         List<UpgradeOption> chosen = new List<UpgradeOption>();
         int count = Mathf.Min(3, pool.Count);
@@ -114,15 +123,23 @@ public class GameHUD : MonoBehaviour
     {
         Time.timeScale = 0f;
         _paused = true;
+
         if (levelUpPanel) levelUpPanel.SetActive(true);
 
+        // Удаляем старые кнопки
         foreach (Transform child in upgradeContainer)
             Destroy(child.gameObject);
 
+        // Создаём новые кнопки
         foreach (var opt in options)
         {
-            var btn = Instantiate(upgradeButtonPrefab, upgradeContainer);
-            var ui  = btn.GetComponent<UpgradeButtonUI>();
+            GameObject btn = Instantiate(upgradeButtonPrefab, upgradeContainer);
+
+            // Сбрасываем локальный scale/position — кнопка должна быть в Canvas
+            btn.transform.localScale    = Vector3.one;
+            btn.transform.localPosition = Vector3.zero;
+
+            UpgradeButtonUI ui = btn.GetComponent<UpgradeButtonUI>();
             ui?.Init(opt, OnUpgradeChosen);
         }
     }
@@ -137,17 +154,19 @@ public class GameHUD : MonoBehaviour
 
     public void PlayDamageFlash()
     {
-        if (damageFlashImage) StartCoroutine(DamageFlashRoutine());
+        if (damageFlashImage)
+            StartCoroutine(FlashRoutine());
     }
 
-    IEnumerator DamageFlashRoutine()
+    IEnumerator FlashRoutine()
     {
-        damageFlashImage.color = new Color(1, 0, 0, 0.35f);
+        damageFlashImage.color = new Color(1, 0, 0, 0.4f);
         float t = 0f;
         while (t < 0.3f)
         {
             t += Time.unscaledDeltaTime;
-            damageFlashImage.color = new Color(1, 0, 0, Mathf.Lerp(0.35f, 0f, t / 0.3f));
+            float a = Mathf.Lerp(0.4f, 0f, t / 0.3f);
+            damageFlashImage.color = new Color(1, 0, 0, a);
             yield return null;
         }
         damageFlashImage.color = new Color(1, 0, 0, 0);

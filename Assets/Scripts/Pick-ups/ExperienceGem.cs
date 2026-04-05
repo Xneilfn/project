@@ -1,28 +1,28 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class ExperienceGem : Pickup, ICollectable
 {
+    public int experienceGranted = 20;
 
-    public int experienceGranted;
+    bool _collected = false;
 
-
+    // Вызывается PlayerCollector через интерфейс ICollectable
     public void Collect()
     {
+        if (_collected) return;
+        _collected = true;
 
         PlayerStats player = FindObjectOfType<PlayerStats>();
-        player.IncreaseExperience(experienceGranted);
+        if (player != null)
+            player.IncreaseExperience(experienceGranted);
 
-
+        Destroy(gameObject);
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    // Прямой подбор — игрок касается без магнита
+    void OnTriggerEnter2D(Collider2D col)
     {
-        if (collision.CompareTag("Player"))
-        {
-            Destroy(gameObject);
-        }
+        if (col.CompareTag("Player"))
+            Collect();
     }
-
 }

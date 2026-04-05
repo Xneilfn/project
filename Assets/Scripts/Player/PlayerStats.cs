@@ -17,6 +17,11 @@ public class PlayerStats : MonoBehaviour
     public int level = 1;
     public int experienceCap = 100;
 
+    // Сколько опыта нужно добавлять к капу на каждый уровень
+    // (используется если levelRanges пустой или уровень вышел за границы)
+    [Tooltip("Прирост capа за каждый уровень если нет подходящего LevelRange")]
+    public int defaultExpCapIncrease = 50;
+
     [System.Serializable]
     public class LevelRange
     {
@@ -33,18 +38,20 @@ public class PlayerStats : MonoBehaviour
 
     void Awake()
     {
-        currentHealth        = characterData.MaxHealth;
-        currentHealthRegen   = characterData.HpRegen;
-        currentMoveSpeed     = characterData.MoveSpeed;
+        currentHealth          = characterData.MaxHealth;
+        currentHealthRegen     = characterData.HpRegen;
+        currentMoveSpeed       = characterData.MoveSpeed;
         currentProjectileCount = characterData.ProjectileCount;
         currentProjectileSpeed = characterData.ProjectileSpeed;
-        currentMagnetRadius  = characterData.MagnetRadius;
+        currentMagnetRadius    = characterData.MagnetRadius;
     }
 
     void Start()
     {
+        // Устанавливаем начальный cap из первого LevelRange если он есть
         if (levelRanges != null && levelRanges.Count > 0)
             experienceCap = levelRanges[0].experienceCapIncrease;
+        // Иначе остаётся значение из Inspector (по умолчанию 100)
     }
 
     void Update()
@@ -60,17 +67,20 @@ public class PlayerStats : MonoBehaviour
     public void IncreaseExperience(int amount)
     {
         experience += amount;
-        LevelUpChecker();
+        // Цикл — на случай если за раз набрали опыт на несколько уровней
+        while (experience >= experienceCap)
+            LevelUp();
     }
 
-    void LevelUpChecker()
+    void LevelUp()
     {
-        if (experience >= experienceCap)
-        {
-            level++;
-            experience -= experienceCap;
+        experience -= experienceCap;
+        level++;
 
-            int increase = 0;
+        // Ищем подходящий LevelRange для нового уровня
+        int increase = 0;
+        if (levelRanges != null)
+        {
             foreach (LevelRange range in levelRanges)
             {
                 if (level >= range.startLevel && level <= range.endLevel)
@@ -79,12 +89,19 @@ public class PlayerStats : MonoBehaviour
                     break;
                 }
             }
-            experienceCap += increase;
-
-            // Show upgrade panel
-            GameHUD hud = FindObjectOfType<GameHUD>();
-            if (hud != null) hud.TriggerLevelUp();
         }
+
+        // Если диапазон не найден — используем дефолтный прирост
+        if (increase == 0)
+            increase = defaultExpCapIncrease;
+
+        experienceCap += increase;
+
+        Debug.Log($"[PlayerStats] Level Up! Уровень: {level}, новый cap: {experienceCap}");
+
+        // Показываем панель апгрейдов
+        GameHUD hud = FindObjectOfType<GameHUD>();
+        hud?.TriggerLevelUp();
     }
 
     public void TakeDamage(float dmg)
@@ -94,16 +111,14 @@ public class PlayerStats : MonoBehaviour
         invincibilityTimer = invincibilityDuration;
         isInvincible = true;
 
-        GameHUD hud = FindObjectOfType<GameHUD>();
-        hud?.PlayDamageFlash();
+        FindObjectOfType<GameHUD>()?.PlayDamageFlash();
 
         if (currentHealth <= 0) Kill();
     }
 
     public void Kill()
     {
-        GameOverUI go = FindObjectOfType<GameOverUI>();
-        go?.Show(false);
+        FindObjectOfType<GameOverUI>()?.Show(false);
         gameObject.SetActive(false);
     }
 

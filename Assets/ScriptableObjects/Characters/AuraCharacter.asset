@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: AuraCharacter
   m_EditorClassIdentifier: 
   startingWeapon: {fileID: 0}
-  maxHealth: 100
+  maxHealth: 225
   hpRegen: 0.5
   moveSpeed: 5
   projectileCount: 0
   projectileSpeed: 0
-  magnetRadius: 1.6
+  magnetRadius: 0.3

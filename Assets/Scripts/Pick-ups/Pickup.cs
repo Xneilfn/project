@@ -1,14 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Pickup : MonoBehaviour
-{
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.CompareTag("Player"))
-        {
-            Destroy(gameObject);
-        }
-    }
-}
+// Базовый класс для подбираемых предметов.
+// Намеренно НЕ содержит OnTriggerEnter2D —
+// каждый наследник сам решает когда уничтожаться.
+public class Pickup : MonoBehaviour { }

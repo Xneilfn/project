@@ -23,13 +23,21 @@ public class EnemyStats : MonoBehaviour
 
     public void Kill()
     {
-        // Register kill in HUD
-        GameHUD hud = FindObjectOfType<GameHUD>();
-        hud?.RegisterKill();
-
+        FindObjectOfType<GameHUD>()?.RegisterKill();
         Destroy(gameObject);
     }
 
+    // Работает когда коллайдер врага — Trigger
+    void OnTriggerStay2D(Collider2D col)
+    {
+        if (col.CompareTag("Player"))
+        {
+            PlayerStats player = col.GetComponent<PlayerStats>();
+            player?.TakeDamage(currentDamage * Time.deltaTime);
+        }
+    }
+
+    // Работает когда коллайдер врага — обычный (не Trigger)
     void OnCollisionStay2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Player"))
