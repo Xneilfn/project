@@ -54,7 +54,7 @@ public class GameHUD : MonoBehaviour
         if (_player == null || _paused) return;
 
         // ── HP ──────────────────────────────────────────────────────────────
-        float maxHp = _player.characterData.MaxHealth;
+        float maxHp = _player.runtimeMaxHealth;
         float hpRatio = Mathf.Clamp01(_player.currentHealth / maxHp);
         if (healthSlider) healthSlider.value = hpRatio;
         if (healthFill)   healthFill.color   = healthGradient.Evaluate(hpRatio);

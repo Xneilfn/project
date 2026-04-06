@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90f0ae728f9cac84ea313811dbeba4fe, type: 3}
   m_Name: AuraCharacter
   m_EditorClassIdentifier: 
-  startingWeapon: {fileID: 0}
-  maxHealth: 225
+  startingWeapon: {fileID: 865173275733711592, guid: 804fd70ecdd222843977f089754d1cde, type: 3}
+  maxHealth: 200
   hpRegen: 0.5
   moveSpeed: 5
   projectileCount: 0
   projectileSpeed: 0
-  magnetRadius: 0.3
+  magnetRadius: 0

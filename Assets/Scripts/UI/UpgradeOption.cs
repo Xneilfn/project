@@ -3,10 +3,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// ─── Rarity ──────────────────────────────────────────────────────────────────
 public enum UpgradeRarity { Common, Rare, Epic, Legendary }
 
-// ─── UpgradeOption ScriptableObject ─────────────────────────────────────────
 [CreateAssetMenu(fileName = "UpgradeOption", menuName = "ScriptableObjects/UpgradeOption")]
 public class UpgradeOption : ScriptableObject
 {
@@ -26,12 +24,32 @@ public class UpgradeOption : ScriptableObject
 
     public void Apply(PlayerStats player)
     {
-        player.characterData.MaxHealth += healthBonus;
-        player.currentHealth           = Mathf.Min(player.currentHealth + healthBonus, player.characterData.MaxHealth);
-        player.currentHealthRegen      += healthRegenBonus;
-        player.currentMoveSpeed        += moveSpeedBonus;
-        player.currentProjectileCount  += projectileBonus;
-        player.currentProjectileSpeed  += projectileSpeedBonus;
-        player.currentMagnetRadius     += magnetRadiusBonus;
+        // HP бонус — добавляем только к текущему здоровью и runtime-максимуму
+        // НЕ трогаем characterData.MaxHealth (ScriptableObject) чтобы не сохранять между сессиями
+        if (healthBonus > 0)
+        {
+            // Увеличиваем только runtime-значение через временный максимум
+            float newMax = player.characterData.MaxHealth + healthBonus;
+            player.currentHealth = Mathf.Min(player.currentHealth + healthBonus, newMax);
+            // Сохраняем увеличенный макс только в рантайм-поле
+            player.runtimeMaxHealth += healthBonus;
+        }
+
+        player.currentHealthRegen     += healthRegenBonus;
+        player.currentMoveSpeed       += moveSpeedBonus;
+        player.currentProjectileCount += projectileBonus;
+        player.currentProjectileSpeed += projectileSpeedBonus;
+        player.currentMagnetRadius    += magnetRadiusBonus;
+
+        // Обновляем радиус коллектора если изменился magnet
+        if (magnetRadiusBonus != 0)
+        {
+            PlayerCollector col = player.GetComponentInChildren<PlayerCollector>();
+            if (col != null)
+            {
+                CircleCollider2D circle = col.GetComponent<CircleCollider2D>();
+                if (circle != null) circle.radius = player.currentMagnetRadius;
+            }
+        }
     }
 }

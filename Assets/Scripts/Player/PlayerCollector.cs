@@ -1,44 +1,45 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerCollector : MonoBehaviour
 {
-    PlayerStats player;
-    CircleCollider2D playerCollector;
-    public float pullSpeed;
+    [Tooltip("Скорость притяжения гемов к игроку")]
+    public float pullSpeed = 5f;
 
+    CircleCollider2D _col;
+    PlayerStats _player;
 
-
-    private void Start()
+    void Start()
     {
-        player = FindObjectOfType<PlayerStats>();
-        playerCollector = GetComponent<CircleCollider2D>();
+        _col    = GetComponent<CircleCollider2D>();
+        _player = FindObjectOfType<PlayerStats>();
 
+        // Начальный радиус из ScriptableObject персонажа
+        // Если 0 — магнит выключен, гемы подбираются только наступив
+        if (_col != null)
+            _col.radius = _player.currentMagnetRadius;
     }
 
-
-    private void Update()
+    void Update()
     {
-        playerCollector.radius = player.currentMagnetRadius;
+        // Обновляем радиус только если он изменился (апгрейд магнита)
+        if (_col != null && !Mathf.Approximately(_col.radius, _player.currentMagnetRadius))
+            _col.radius = _player.currentMagnetRadius;
     }
 
-
-
-
-
-
-    private void OnTriggerEnter2D(Collider2D collision)
+    void OnTriggerEnter2D(Collider2D collision)
     {
-        if(collision.gameObject.TryGetComponent(out ICollectable collectable))
+        // Магнит работает только если радиус > 0
+        if (_player.currentMagnetRadius <= 0) return;
+
+        if (collision.gameObject.TryGetComponent(out ICollectable collectable))
         {
             Rigidbody2D rb = collision.gameObject.GetComponent<Rigidbody2D>();
-            Vector2 forceDirection = (transform.position - collision.transform.position).normalized;
-            rb.AddForce(forceDirection * pullSpeed);
+            if (rb != null)
+            {
+                Vector2 dir = (transform.position - collision.transform.position).normalized;
+                rb.AddForce(dir * pullSpeed);
+            }
             collectable.Collect();
         }
-
-
-
     }
 }

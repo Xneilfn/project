@@ -12,14 +12,15 @@ public class PlayerStats : MonoBehaviour
     [HideInInspector] public float currentProjectileSpeed;
     [HideInInspector] public float currentMagnetRadius;
 
+    // Максимальное HP в рантайме — не трогает ScriptableObject
+    [HideInInspector] public float runtimeMaxHealth;
+
     [Header("Experience / Level")]
     public int experience = 0;
     public int level = 1;
     public int experienceCap = 100;
 
-    // Сколько опыта нужно добавлять к капу на каждый уровень
-    // (используется если levelRanges пустой или уровень вышел за границы)
-    [Tooltip("Прирост capа за каждый уровень если нет подходящего LevelRange")]
+    [Tooltip("Прирост cap за уровень если нет подходящего LevelRange")]
     public int defaultExpCapIncrease = 50;
 
     [System.Serializable]
@@ -38,7 +39,9 @@ public class PlayerStats : MonoBehaviour
 
     void Awake()
     {
-        currentHealth          = characterData.MaxHealth;
+        // Инициализируем рантайм-максимум из ScriptableObject
+        runtimeMaxHealth       = characterData.MaxHealth;
+        currentHealth          = runtimeMaxHealth;
         currentHealthRegen     = characterData.HpRegen;
         currentMoveSpeed       = characterData.MoveSpeed;
         currentProjectileCount = characterData.ProjectileCount;
@@ -48,10 +51,8 @@ public class PlayerStats : MonoBehaviour
 
     void Start()
     {
-        // Устанавливаем начальный cap из первого LevelRange если он есть
         if (levelRanges != null && levelRanges.Count > 0)
             experienceCap = levelRanges[0].experienceCapIncrease;
-        // Иначе остаётся значение из Inspector (по умолчанию 100)
     }
 
     void Update()
@@ -67,7 +68,6 @@ public class PlayerStats : MonoBehaviour
     public void IncreaseExperience(int amount)
     {
         experience += amount;
-        // Цикл — на случай если за раз набрали опыт на несколько уровней
         while (experience >= experienceCap)
             LevelUp();
     }
@@ -77,7 +77,6 @@ public class PlayerStats : MonoBehaviour
         experience -= experienceCap;
         level++;
 
-        // Ищем подходящий LevelRange для нового уровня
         int increase = 0;
         if (levelRanges != null)
         {
@@ -90,18 +89,11 @@ public class PlayerStats : MonoBehaviour
                 }
             }
         }
-
-        // Если диапазон не найден — используем дефолтный прирост
-        if (increase == 0)
-            increase = defaultExpCapIncrease;
-
+        if (increase == 0) increase = defaultExpCapIncrease;
         experienceCap += increase;
 
         Debug.Log($"[PlayerStats] Level Up! Уровень: {level}, новый cap: {experienceCap}");
-
-        // Показываем панель апгрейдов
-        GameHUD hud = FindObjectOfType<GameHUD>();
-        hud?.TriggerLevelUp();
+        FindObjectOfType<GameHUD>()?.TriggerLevelUp();
     }
 
     public void TakeDamage(float dmg)
@@ -110,9 +102,7 @@ public class PlayerStats : MonoBehaviour
         currentHealth -= dmg;
         invincibilityTimer = invincibilityDuration;
         isInvincible = true;
-
         FindObjectOfType<GameHUD>()?.PlayDamageFlash();
-
         if (currentHealth <= 0) Kill();
     }
 
@@ -124,10 +114,10 @@ public class PlayerStats : MonoBehaviour
 
     void Regen()
     {
-        if (currentHealth < characterData.MaxHealth)
+        if (currentHealth < runtimeMaxHealth)
         {
             currentHealth += currentHealthRegen * Time.deltaTime;
-            currentHealth  = Mathf.Min(currentHealth, characterData.MaxHealth);
+            currentHealth  = Mathf.Min(currentHealth, runtimeMaxHealth);
         }
     }
 }

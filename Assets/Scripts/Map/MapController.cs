@@ -4,152 +4,74 @@ using UnityEngine;
 
 public class MapController : MonoBehaviour
 {
-    public List<GameObject> terrainChunks; // список префабов для разнообразной генерации
-    public GameObject player; // игрок
-    public float checkerRadius; // радиус для создания чанков
-    Vector3 noTerrainPosition; // место подходящее для создания чанка
+    public List<GameObject> terrainChunks;
+    public GameObject player;
+    public float checkerRadius = 1f;
     public LayerMask terrainMask;
-    Player pl;
     public GameObject currentChunk;
 
     [Header("Optimization")]
-
     public List<GameObject> spawnedChunks;
-    public GameObject latestChunk;
-    public float maxOptimizationDistance;
-    float optimizationDistance;
-    public float optimizerCooldown;
-    public float optimizerCooldownDuration;
+    public float maxOptimizationDistance = 30f;
+    public float optimizerCooldownDuration = 1f;
+
+    Player _pl;
+    float _optimizerCooldown;
+    Vector3 _noTerrainPosition;
+
+    // Р’СЃРµ 8 РЅР°РїСЂР°РІР»РµРЅРёР№ РґР»СЏ РїСЂРѕРІРµСЂРєРё
+    static readonly string[] Directions = {
+        "Top", "Bot", "Left", "Right",
+        "Top Right", "Top Left", "Bot Right", "Bot Left"
+    };
+
     void Start()
     {
-        pl = FindObjectOfType<Player>();
+        _pl = FindObjectOfType<Player>();
     }
 
-    // Update is called once per frame
     void Update()
     {
         ChunkChecker();
         ChunkOptimizer();
     }
 
-    private void ChunkChecker()
+    void ChunkChecker()
     {
-        if (!currentChunk)
-        {
-            return;
-        }
+        if (!currentChunk) return;
 
-        if(pl.move_dir.x == 1f && pl.move_dir.y == 0f) // вправо
+        // РџСЂРѕРІРµСЂСЏРµРј РІСЃРµ 8 РЅР°РїСЂР°РІР»РµРЅРёР№ РЅРµР·Р°РІРёСЃРёРјРѕ РѕС‚ РґРІРёР¶РµРЅРёСЏ РёРіСЂРѕРєР°
+        foreach (string dir in Directions)
         {
-            if (!Physics2D.OverlapCircle(currentChunk.transform.Find("Right").position, checkerRadius, terrainMask))
+            Transform point = currentChunk.transform.Find(dir);
+            if (point == null) continue;
+
+            if (!Physics2D.OverlapCircle(point.position, checkerRadius, terrainMask))
             {
-                noTerrainPosition = currentChunk.transform.Find("Right").position;
+                _noTerrainPosition = point.position;
                 SpawnChunk();
             }
         }
-
-        else if (pl.move_dir.x == -1f && pl.move_dir.y == 0f) // влево
-        {
-            if (!Physics2D.OverlapCircle(currentChunk.transform.Find("Left").position, checkerRadius, terrainMask))
-            {
-                noTerrainPosition = currentChunk.transform.Find("Left").position;
-                SpawnChunk();
-            }
-        }
-
-        else if (pl.move_dir.x == 0f && pl.move_dir.y == 1f) // вверх
-        {
-            if (!Physics2D.OverlapCircle(currentChunk.transform.Find("Top").position, checkerRadius, terrainMask))
-            {
-                noTerrainPosition = currentChunk.transform.Find("Top").position;
-                SpawnChunk();
-            }
-        }
-
-        else if (pl.move_dir.x == 0f && pl.move_dir.y == -1f) // вниз
-        {
-            if (!Physics2D.OverlapCircle(currentChunk.transform.Find("Bot").position, checkerRadius, terrainMask))
-            {
-                noTerrainPosition = currentChunk.transform.Find("Bot").position;
-                SpawnChunk();
-            }
-        }
-
-
-        // диагональные направления проверяются иначе, тк вектор нормализован
-
-        else if (pl.move_dir.x > 0 && pl.move_dir.y > 0) // вправо вверх
-        {
-            if (!Physics2D.OverlapCircle(currentChunk.transform.Find("Top Right").position, checkerRadius, terrainMask))
-            {
-                noTerrainPosition = currentChunk.transform.Find("Top Right").position;
-                SpawnChunk();
-            }
-        }
-
-        else if (pl.move_dir.x > 0f && pl.move_dir.y < 0f) // вправо вниз
-        {
-            if (!Physics2D.OverlapCircle(currentChunk.transform.Find("Bot Right").position, checkerRadius, terrainMask))
-            {
-                noTerrainPosition = currentChunk.transform.Find("Bot Right").position;
-                SpawnChunk();
-            }
-        }
-
-        else if (pl.move_dir.x < 0f && pl.move_dir.y > 0f) // влево вверх
-        {
-            if (!Physics2D.OverlapCircle(currentChunk.transform.Find("Top Left").position, checkerRadius, terrainMask))
-            {
-                noTerrainPosition = currentChunk.transform.Find("Top Left").position;
-                SpawnChunk();
-            }
-        }
-
-        else if (pl.move_dir.x < 0f && pl.move_dir.y <0f) // влево вниз
-        {
-            if (!Physics2D.OverlapCircle(currentChunk.transform.Find("Bot Left").position, checkerRadius, terrainMask))
-            {
-                noTerrainPosition = currentChunk.transform.Find("Bot Left").position;
-                SpawnChunk();
-            }
-        }
-
     }
 
-
-
-
-    private void SpawnChunk()
+    void SpawnChunk()
     {
         int rand = Random.Range(0, terrainChunks.Count);
-        latestChunk = Instantiate(terrainChunks[rand], noTerrainPosition, Quaternion.identity);
-        spawnedChunks.Add(latestChunk);
+        GameObject chunk = Instantiate(terrainChunks[rand], _noTerrainPosition, Quaternion.identity);
+        spawnedChunks.Add(chunk);
     }
-
 
     void ChunkOptimizer()
     {
-        optimizerCooldown -= Time.deltaTime;
-        if (optimizerCooldown <= 0)
-        {
-            optimizerCooldown = optimizerCooldownDuration;
-        }
-        else
-        {
-            return;
-        }
+        _optimizerCooldown -= Time.deltaTime;
+        if (_optimizerCooldown > 0) return;
+        _optimizerCooldown = optimizerCooldownDuration;
+
         foreach (GameObject chunk in spawnedChunks)
         {
-            optimizationDistance = Vector3.Distance(pl.transform.position, chunk.transform.position);
-            if (optimizationDistance > maxOptimizationDistance)
-            {
-                chunk.SetActive(false);
-
-            }
-            else
-            {
-                chunk.SetActive(true);
-            }
+            if (chunk == null) continue;
+            float dist = Vector3.Distance(_pl.transform.position, chunk.transform.position);
+            chunk.SetActive(dist <= maxOptimizationDistance);
         }
     }
 }
