@@ -11,16 +11,12 @@ public class PlayerStats : MonoBehaviour
     [HideInInspector] public float currentProjectileCount;
     [HideInInspector] public float currentProjectileSpeed;
     [HideInInspector] public float currentMagnetRadius;
-
-    // Максимальное HP в рантайме — не трогает ScriptableObject
     [HideInInspector] public float runtimeMaxHealth;
 
     [Header("Experience / Level")]
     public int experience = 0;
     public int level = 1;
     public int experienceCap = 100;
-
-    [Tooltip("Прирост cap за уровень если нет подходящего LevelRange")]
     public int defaultExpCapIncrease = 50;
 
     [System.Serializable]
@@ -39,7 +35,6 @@ public class PlayerStats : MonoBehaviour
 
     void Awake()
     {
-        // Инициализируем рантайм-максимум из ScriptableObject
         runtimeMaxHealth       = characterData.MaxHealth;
         currentHealth          = runtimeMaxHealth;
         currentHealthRegen     = characterData.HpRegen;
@@ -53,23 +48,22 @@ public class PlayerStats : MonoBehaviour
     {
         if (levelRanges != null && levelRanges.Count > 0)
             experienceCap = levelRanges[0].experienceCapIncrease;
+
+        SoundManager.Instance?.PlayGameMusic();
     }
 
     void Update()
     {
-        if (invincibilityTimer > 0)
-            invincibilityTimer -= Time.deltaTime;
-        else
-            isInvincible = false;
-
+        if (invincibilityTimer > 0) invincibilityTimer -= Time.deltaTime;
+        else isInvincible = false;
         Regen();
     }
 
     public void IncreaseExperience(int amount)
     {
         experience += amount;
-        while (experience >= experienceCap)
-            LevelUp();
+        SoundManager.Instance?.PlayGemPickup();
+        while (experience >= experienceCap) LevelUp();
     }
 
     void LevelUp()
@@ -79,20 +73,14 @@ public class PlayerStats : MonoBehaviour
 
         int increase = 0;
         if (levelRanges != null)
-        {
-            foreach (LevelRange range in levelRanges)
-            {
-                if (level >= range.startLevel && level <= range.endLevel)
-                {
-                    increase = range.experienceCapIncrease;
-                    break;
-                }
-            }
-        }
+            foreach (LevelRange r in levelRanges)
+                if (level >= r.startLevel && level <= r.endLevel)
+                    { increase = r.experienceCapIncrease; break; }
+
         if (increase == 0) increase = defaultExpCapIncrease;
         experienceCap += increase;
 
-        Debug.Log($"[PlayerStats] Level Up! Уровень: {level}, новый cap: {experienceCap}");
+        SoundManager.Instance?.PlayLevelUp();
         FindObjectOfType<GameHUD>()?.TriggerLevelUp();
     }
 
@@ -102,7 +90,10 @@ public class PlayerStats : MonoBehaviour
         currentHealth -= dmg;
         invincibilityTimer = invincibilityDuration;
         isInvincible = true;
+
+        SoundManager.Instance?.PlayPlayerHit();
         FindObjectOfType<GameHUD>()?.PlayDamageFlash();
+
         if (currentHealth <= 0) Kill();
     }
 
@@ -115,9 +106,6 @@ public class PlayerStats : MonoBehaviour
     void Regen()
     {
         if (currentHealth < runtimeMaxHealth)
-        {
-            currentHealth += currentHealthRegen * Time.deltaTime;
-            currentHealth  = Mathf.Min(currentHealth, runtimeMaxHealth);
-        }
+            currentHealth = Mathf.Min(currentHealth + currentHealthRegen * Time.deltaTime, runtimeMaxHealth);
     }
 }

@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0031565e26d23a2438e7df102673ee7c, type: 3}
   m_Name: WeaponScriptableObject
   m_EditorClassIdentifier: Assembly-CSharp::WeaponScriptableObject
-  prefab: {fileID: 0}
-  damage: 0
-  speed: 0
-  cooldownDuration: 0
+  prefab: {fileID: 4409635479586650367, guid: 1df478b21bbd147b995cee8d9aa5c888, type: 3}
+  damage: 12
+  speed: 8
+  cooldownDuration: 4
   pierce: 0
